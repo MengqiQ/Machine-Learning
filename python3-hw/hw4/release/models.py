@@ -136,6 +136,13 @@ class StochasticKMeans(Model):
     def __init__(self):
         super().__init__()
         # TODO: Initializations etc. go here.
+        self.u = None
+        self.r = None
+        self.k = None
+        self.y = None
+        self.belta = None
+        self.p = None
+        self.c = 2
         pass
 
     def fit(self, X, _, **kwargs):
@@ -144,7 +151,41 @@ class StochasticKMeans(Model):
         num_clusters = kwargs['num_clusters']
         iterations = kwargs['iterations']
         # TODO: Write code to fit the model.  NOTE: labels should not be used here.
+        X = X.toarray()
+        row, column = X.shape
+        # self.u = np.zeros([num_clusters, column])
+        # self.u[0,:] = np.mean(X, axis=0).reshape(1, -1)
+        # self.belta = np.zeros(row)
+        # self.p = np.zeros([row, num_clusters])
+        self.k = num_clusters
+        if self.k == 1:
+            self.u = np.mean(X, axis=0).reshape(1, -1)
+        else:
+            max = np.max(X, axis = 0)
+            min = np.min(X, axis = 0)
+            self.u = np.stack([(1 - i / (self.k - 1)) * min + (i / (self.k - 1)) * max for i in range(self.k)], axis = 0)
+        for iter in range(iterations):
+            iter += 1
+            self.belta = self.c * iter
+            self.p = np.zeros([self.k, row])
+            for i in range(row):
+                    dis = np.linalg.norm(X[i,:] - self.u, axis = 1)
+                    d_hat = np.mean(dis)
+                    # self.belta[i] = self.c * i
+                    # denominator = np.sum(np.exp(- self.belta[i] * self.u[i,k]) / d_hat)
+                    p = np.exp(- self.belta * dis / d_hat)
+                    self.p[:,i] = p / np.sum(p)
+                    # self.u[k,:] = np.sum(np.dot(self.p[i,k], X[i,:])) / np.sum(self.p[i,k])
+            self.u = np.dot(self.p, X) / np.sum(self.p, axis = 1).reshape(self.k, -1)
 
     def predict(self, X):
         # TODO: Write code to make predictions.
+        X = X.toarray()
+        row, column = X.shape
+        feature = min(X.shape[1], self.u.shape[1])
+        self.y = np.zeros(row)
+        for i in range(row):
+            self.y[i] = np.argmin(np.linalg.norm(X[i, :feature] - self.u[:, :feature], axis=1))
+        return self.y
         pass
+
